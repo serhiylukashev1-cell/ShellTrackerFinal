@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShelfTrack — Parts Inventory</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6fa;--surface:#fff;--surface2:#eef1f7;--border:#dde2ee;
+  --accent:#00a872;--accent2:#0077cc;--warn:#d48a00;--danger:#d63344;
+  --purple:#7c3aed;--text:#1a1e2a;--muted:#8892a4;
+  --mono:'Share Tech Mono',monospace;--sans:'Barlow',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,168,114,.05)1px,transparent 1px),linear-gradient(90deg,rgba(0,168,114,.05)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:0 20px 80px}
+
+/* HEADER */
+header{padding:30px 0 20px;border-bottom:1px solid var(--border);margin-bottom:32px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.logo{display:flex;flex-direction:column;line-height:1}
+.logo-tag{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:4px;text-transform:uppercase;margin-bottom:4px}
+.logo h1{font-weight:900;font-size:clamp(26px,4vw,42px);letter-spacing:-1px}
+.logo h1 span{color:var(--accent)}
+.stats-bar{display:flex;gap:20px;flex-wrap:wrap;align-items:center}
+.stat{display:flex;flex-direction:column;align-items:flex-end}
+.stat-val{font-family:var(--mono);font-size:20px;color:var(--accent);line-height:1}
+.stat-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-top:2px}
+
+/* CONTROLS */
+.controls{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;margin-bottom:28px;align-items:end}
+@media(max-width:700px){.controls{grid-template-columns:1fr 1fr}}
+@media(max-width:420px){.controls{grid-template-columns:1fr}}
+.field-group{display:flex;flex-direction:column;gap:6px}
+.field-group label{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+input,select,textarea{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--sans);font-size:14px;padding:10px 14px;border-radius:4px;outline:none;transition:border-color .2s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,168,114,.1)}
+input::placeholder{color:var(--muted)}
+select option{background:#fff}
+.search-input{position:relative}
+.search-input input{padding-left:38px}
+.search-input::before{content:'⌕';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px;pointer-events:none}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:4px;font-family:var(--sans);font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;border:none;transition:all .2s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#008f60;transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,168,114,.25)}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-purple:hover{background:#6d28d9;transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,58,237,.25)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:transparent;color:var(--danger);border:1px solid transparent;padding:5px 9px;font-size:11px}
+.btn-danger:hover{border-color:var(--danger);background:rgba(214,51,68,.06)}
+.btn-edit{background:transparent;color:var(--accent2);border:1px solid transparent;padding:5px 9px;font-size:11px}
+.btn-edit:hover{border-color:var(--accent2);background:rgba(0,119,204,.06)}
+.btn-sm{padding:5px 10px;font-size:11px}
+
+/* PANEL */
+.panel{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--accent);border-radius:4px;padding:24px;margin-bottom:28px;display:none;animation:slideDown .25s ease}
+.panel.open{display:block}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.panel-title{font-family:var(--mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:20px}
+.form-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;align-items:end}
+@media(max-width:800px){.form-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.form-grid{grid-template-columns:1fr}}
+.form-actions{display:flex;gap:10px;justify-content:flex-end}
+
+/* PHOTO UPLOAD ZONE */
+.photo-zone{border:2px dashed var(--border);border-radius:6px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--bg);min-height:80px;display:flex;align-items:center;justify-content:center}
+.photo-zone:hover,.photo-zone.drag-over{border-color:var(--accent);background:rgba(0,168,114,.04)}
+.photo-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.photo-zone-inner{pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:4px}
+.photo-zone-icon{font-size:22px;color:var(--muted)}
+.photo-zone-label{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:1px}
+.photo-preview-wrap{position:relative;display:inline-block;width:100%}
+.photo-preview{width:100%;max-height:120px;object-fit:contain;border-radius:4px;border:1px solid var(--border);background:#fff}
+.photo-remove-btn{position:absolute;top:4px;right:4px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+.table-header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px}
+.table-title{font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)}
+.result-count{font-family:var(--mono);font-size:12px;color:var(--accent)}
+table{width:100%;border-collapse:collapse}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:left;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
+thead th:hover{color:var(--accent)}
+thead th.sorted{color:var(--accent)}
+thead th .si{display:inline-block;margin-left:3px;opacity:.4;font-size:10px}
+thead th.sorted .si{opacity:1}
+tbody tr{border-bottom:1px solid rgba(221,226,238,.5);transition:background .12s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+td{padding:10px 14px;font-size:13px;vertical-align:middle}
+
+/* THUMBNAIL */
+.part-thumb{width:42px;height:42px;object-fit:cover;border-radius:4px;border:1px solid var(--border);cursor:pointer;transition:transform .15s;background:#f0f2f8}
+.part-thumb:hover{transform:scale(1.1);box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.no-thumb{width:42px;height:42px;border-radius:4px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px;cursor:pointer;background:var(--bg);transition:all .15s}
+.no-thumb:hover{border-color:var(--accent);color:var(--accent)}
+
+.part-num{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600}
+.loc-type-badge{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:3px}
+.loc-type-cab{background:rgba(0,119,204,.08);border:1px solid rgba(0,119,204,.2);color:var(--accent2)}
+.loc-type-shelf{background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);color:var(--purple)}
+.cabinet-badge{display:inline-flex;align-items:center;gap:3px;background:rgba(0,119,204,.07);border:1px solid rgba(0,119,204,.18);color:var(--accent2);font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px}
+.shelf-loc{display:inline-flex;align-items:center;gap:4px;background:rgba(0,168,114,.07);border:1px solid rgba(0,168,114,.18);color:var(--accent);font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px}
+.shelf-loc.standalone{background:rgba(124,58,237,.07);border-color:rgba(124,58,237,.18);color:var(--purple)}
+.qty-badge{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(0,168,114,.08);color:var(--accent);border:1px solid rgba(0,168,114,.18)}
+.qty-badge.low{background:rgba(212,138,0,.1);color:var(--warn);border-color:rgba(212,138,0,.22)}
+.qty-badge.empty{background:rgba(214,51,68,.07);color:var(--danger);border-color:rgba(214,51,68,.18)}
+.desc-cell{color:#4a5468;font-size:12px;max-width:200px}
+.actions-cell{display:flex;gap:3px}
+.empty-state{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty-state .ei{font-size:36px;margin-bottom:10px;opacity:.3}
+
+/* SECTION HEADER */
+.section-head{display:flex;align-items:center;gap:10px;margin-bottom:18px;margin-top:40px}
+.section-head h2{font-family:var(--mono);font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.section-head-line{flex:1;height:1px;background:var(--border)}
+.section-actions{display:flex;gap:8px}
+
+/* CABINET MAP */
+.cabinets-wrap{display:flex;flex-direction:column;gap:18px}
+.cabinet-block{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.cabinet-header{display:flex;align-items:center;gap:10px;padding:13px 18px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.cabinet-photo-thumb{width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--border);cursor:pointer;flex-shrink:0}
+.cabinet-photo-placeholder{width:36px;height:36px;border-radius:4px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);cursor:pointer;flex-shrink:0;transition:all .15s}
+.cabinet-photo-placeholder:hover{border-color:var(--accent2);color:var(--accent2)}
+.cabinet-name-wrap{flex:1;min-width:0}
+.cabinet-name{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent2);cursor:pointer;display:block}
+.cabinet-name:hover{text-decoration:underline}
+.cabinet-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.cabinet-actions{display:flex;gap:3px;flex-shrink:0}
+.cabinet-body{padding:14px 18px}
+.shelf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+
+/* SHELF CELLS (inside cabinets) */
+.shelf-cell{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px;position:relative;overflow:hidden;transition:all .2s}
+.shelf-cell::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);opacity:0;transition:opacity .2s}
+.shelf-cell:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.06)}
+.shelf-cell:hover::before,.shelf-cell.occupied::before{opacity:.5}
+.shelf-cell.occupied{border-color:rgba(0,168,114,.28)}
+.shelf-cell-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.shelf-cell-photo{width:32px;height:32px;object-fit:cover;border-radius:3px;border:1px solid var(--border);cursor:pointer;flex-shrink:0}
+.shelf-cell-photo-placeholder{width:32px;height:32px;border-radius:3px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);cursor:pointer;flex-shrink:0;transition:all .15s}
+.shelf-cell-photo-placeholder:hover{border-color:var(--accent);color:var(--accent)}
+.shelf-btns{display:flex;gap:2px;opacity:0;transition:opacity .15s}
+.shelf-cell:hover .shelf-btns{opacity:1}
+.shelf-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:2px 3px;line-height:1;border-radius:2px}
+.shelf-btn:hover{background:var(--border)}
+.shelf-btn.del:hover{background:rgba(214,51,68,.12);color:var(--danger)}
+.shelf-id{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent2);cursor:pointer;flex:1}
+.shelf-id:hover{text-decoration:underline}
+.shelf-count{font-size:10px;color:var(--muted);margin-bottom:2px}
+.shelf-preview{font-family:var(--mono);font-size:9px;color:var(--accent);line-height:1.5;cursor:pointer;word-break:break-all}
+.shelf-preview:hover{text-decoration:underline}
+.add-shelf-btn{display:flex;align-items:center;justify-content:center;gap:5px;font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--bg);border:1px dashed var(--border);border-radius:4px;padding:10px;cursor:pointer;transition:all .2s;letter-spacing:1px}
+.add-shelf-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,168,114,.04)}
+
+/* STANDALONE SHELVES */
+.standalone-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.standalone-shelf{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:6px;padding:14px;position:relative;transition:all .2s}
+.standalone-shelf:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-1px)}
+.standalone-shelf.occupied{border-left-color:var(--purple)}
+.ss-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.ss-photo{width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid var(--border);cursor:pointer;flex-shrink:0}
+.ss-photo-placeholder{width:48px;height:48px;border-radius:4px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted);cursor:pointer;flex-shrink:0;transition:all .15s;background:var(--bg)}
+.ss-photo-placeholder:hover{border-color:var(--purple);color:var(--purple)}
+.ss-info{flex:1;min-width:0}
+.ss-name{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--purple);cursor:pointer;word-break:break-word}
+.ss-name:hover{text-decoration:underline}
+.ss-desc{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.ss-count{font-size:11px;color:var(--muted);margin-bottom:6px}
+.ss-preview{font-family:var(--mono);font-size:9px;color:var(--purple);line-height:1.6;cursor:pointer}
+.ss-preview:hover{text-decoration:underline}
+.ss-actions{display:flex;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.add-standalone-btn{display:flex;align-items:center;justify-content:center;gap:6px;font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--surface);border:1px dashed rgba(124,58,237,.3);border-radius:6px;padding:14px;cursor:pointer;transition:all .2s;letter-spacing:1px;min-height:120px}
+.add-standalone-btn:hover{border-color:var(--purple);color:var(--purple);background:rgba(124,58,237,.04)}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--accent2);border-radius:6px;padding:26px;width:100%;max-width:540px;animation:fadeIn .2s ease;max-height:92vh;overflow-y:auto}
+.modal.modal-purple{border-top-color:var(--purple)}
+@keyframes fadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+.modal-title{font-family:var(--mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent2);margin-bottom:18px}
+.modal-title.purple{color:var(--purple)}
+.mform{display:flex;flex-direction:column;gap:12px}
+.mgrid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+
+/* LIGHTBOX */
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:200;align-items:center;justify-content:center;padding:20px;cursor:zoom-out}
+.lightbox.open{display:flex}
+.lightbox img{max-width:90vw;max-height:85vh;object-fit:contain;border-radius:6px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.lb-close{position:fixed;top:18px;right:22px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:22px;cursor:pointer;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.lb-close:hover{background:rgba(255,255,255,.25)}
+.lb-label{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.7);font-family:var(--mono);font-size:12px;letter-spacing:1px;background:rgba(0,0,0,.4);padding:5px 14px;border-radius:20px}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--surface);border:1px solid var(--accent);color:var(--accent);font-family:var(--mono);font-size:12px;letter-spacing:1px;padding:11px 18px;border-radius:4px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s ease;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.toast.show{transform:translateY(0);opacity:1}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <span class="logo-tag">// inventory system</span>
+    <h1>Shelf<span>Track</span></h1>
+  </div>
+  <div class="stats-bar">
+    <div class="stat"><span class="stat-val" id="stat-parts">0</span><span class="stat-label">Parts</span></div>
+    <div class="stat"><span class="stat-val" id="stat-cabinets">0</span><span class="stat-label">Cabinets</span></div>
+    <div class="stat"><span class="stat-val" id="stat-standalone">0</span><span class="stat-label">Standalone</span></div>
+    <div class="stat"><span class="stat-val" id="stat-qty">0</span><span class="stat-label">Total Units</span></div>
+    <button class="btn btn-ghost btn-sm" onclick="resetToDefaults()">↺ Reset</button>
+  </div>
+</header>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <div class="field-group">
+    <label>Search Parts</label>
+    <div class="search-input">
+      <input type="text" id="searchInput" placeholder="Part #, description, location…" oninput="filterParts()">
+    </div>
+  </div>
+  <div class="field-group">
+    <label>Location Type</label>
+    <select id="locTypeFilter" onchange="filterParts()">
+      <option value="">All Locations</option>
+      <option value="cabinet">Cabinet Shelves</option>
+      <option value="standalone">Standalone Shelves</option>
+    </select>
+  </div>
+  <div class="field-group">
+    <label>Filter by Location</label>
+    <select id="locFilter" onchange="filterParts()"><option value="">All</option></select>
+  </div>
+  <button class="btn btn-primary" onclick="toggleAddPanel()">+ Add Part</button>
+</div>
+
+<!-- ADD PART PANEL -->
+<div class="panel" id="addPanel">
+  <div class="panel-title">// new part entry</div>
+  <div class="form-grid">
+    <div class="field-group">
+      <label>Part Number *</label>
+      <input type="text" id="newPartNum" placeholder="e.g. PN-00123">
+    </div>
+    <div class="field-group">
+      <label>Location Type</label>
+      <select id="newLocType" onchange="updateAddLocFields()">
+        <option value="cabinet">Cabinet Shelf</option>
+        <option value="standalone">Standalone Shelf</option>
+      </select>
+    </div>
+    <div class="field-group" id="addCabinetField">
+      <label>Cabinet</label>
+      <input type="text" id="newCabinet" placeholder="e.g. CAB-1" list="cabinetList">
+      <datalist id="cabinetList"></datalist>
+    </div>
+    <div class="field-group">
+      <label id="addShelfLabel">Shelf *</label>
+      <input type="text" id="newShelf" placeholder="e.g. A-01" list="shelfList">
+      <datalist id="shelfList"></datalist>
+    </div>
+    <div class="field-group">
+      <label>Quantity</label>
+      <input type="number" id="newQty" placeholder="0" min="0">
+    </div>
+    <div class="field-group" style="grid-column:span 2">
+      <label>Description</label>
+      <input type="text" id="newDesc" placeholder="Brief part description…">
+    </div>
+    <div class="field-group" style="grid-column:span 1">
+      <label>Part Photo</label>
+      <div class="photo-zone" id="addDropZone" ondragover="dzOver(event,'addDropZone')" ondragleave="dzLeave('addDropZone')" ondrop="dzDrop(event,'newPhotoPreview','newPhotoData')">
+        <input type="file" accept="image/*" onchange="handleFile(this,'newPhotoPreview','newPhotoData')">
+        <div id="newPhotoPreview" class="photo-zone-inner">
+          <div class="photo-zone-icon">📷</div>
+          <div class="photo-zone-label">Click or drag</div>
+        </div>
+      </div>
+      <input type="hidden" id="newPhotoData">
+    </div>
+  </div>
+  <div class="form-actions">
+    <button class="btn btn-ghost" onclick="toggleAddPanel()">Cancel</button>
+    <button class="btn btn-primary" onclick="addPart()">Save Part</button>
+  </div>
+</div>
+
+<!-- PARTS TABLE -->
+<div class="table-wrap">
+  <div class="table-header">
+    <span class="table-title">// parts inventory</span>
+    <span class="result-count" id="resultCount">0 records</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px">Photo</th>
+          <th onclick="sortBy('partNum')" id="th-partNum">Part # <span class="si">↕</span></th>
+          <th onclick="sortBy('locType')" id="th-locType">Type <span class="si">↕</span></th>
+          <th onclick="sortBy('cabinet')" id="th-cabinet">Cabinet <span class="si">↕</span></th>
+          <th onclick="sortBy('shelf')" id="th-shelf">Shelf <span class="si">↕</span></th>
+          <th onclick="sortBy('qty')" id="th-qty">Qty <span class="si">↕</span></th>
+          <th onclick="sortBy('desc')" id="th-desc">Description <span class="si">↕</span></th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="partsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- CABINET SECTION -->
+<div class="section-head">
+  <h2>🗄 cabinets with shelves</h2>
+  <div class="section-head-line"></div>
+  <div class="section-actions">
+    <button class="btn btn-ghost btn-sm" onclick="openAddCabinet()">+ Cabinet</button>
+  </div>
+</div>
+<div class="cabinets-wrap" id="cabinetMap"></div>
+
+<!-- STANDALONE SHELVES SECTION -->
+<div class="section-head">
+  <h2>📦 standalone shelves</h2>
+  <div class="section-head-line"></div>
+  <div class="section-actions">
+    <button class="btn btn-purple btn-sm" onclick="openAddStandalone()">+ Shelf</button>
+  </div>
+</div>
+<div class="standalone-grid" id="standaloneMap"></div>
+
+</div><!-- /app -->
+
+<!-- EDIT PART MODAL -->
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <div class="modal-title">// edit part</div>
+    <div class="mform">
+      <input type="hidden" id="editId">
+      <div class="mgrid2">
+        <div class="field-group"><label>Part Number</label><input type="text" id="editPartNum"></div>
+        <div class="field-group"><label>Location Type</label>
+          <select id="editLocType" onchange="updateEditLocFields()">
+            <option value="cabinet">Cabinet Shelf</option>
+            <option value="standalone">Standalone Shelf</option>
+          </select>
+        </div>
+        <div class="field-group" id="editCabinetField"><label>Cabinet</label>
+          <input type="text" id="editCabinet" list="editCabinetList">
+          <datalist id="editCabinetList"></datalist>
+        </div>
+        <div class="field-group"><label id="editShelfLabel">Shelf</label>
+          <input type="text" id="editShelf" list="editShelfList">
+          <datalist id="editShelfList"></datalist>
+        </div>
+        <div class="field-group"><label>Quantity</label><input type="number" id="editQty" min="0"></div>
+        <div class="field-group"><label>Description</label><input type="text" id="editDesc"></div>
+      </div>
+      <div class="field-group">
+        <label>Part Photo</label>
+        <div class="photo-zone" id="editDropZone" ondragover="dzOver(event,'editDropZone')" ondragleave="dzLeave('editDropZone')" ondrop="dzDrop(event,'editPhotoPreview','editPhotoData')">
+          <input type="file" accept="image/*" onchange="handleFile(this,'editPhotoPreview','editPhotoData')">
+          <div id="editPhotoPreview" class="photo-zone-inner">
+            <div class="photo-zone-icon">📷</div><div class="photo-zone-label">Click or drag</div>
+          </div>
+        </div>
+        <input type="hidden" id="editPhotoData">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="editRemovePhotoBtn" style="display:none;margin-right:auto" onclick="clearPreview('editPhotoPreview','editPhotoData',true)">Remove Photo</button>
+        <button class="btn btn-ghost" onclick="closeModal('editModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CABINET MODAL -->
+<div class="modal-bg" id="addCabinetModal">
+  <div class="modal modal-purple">
+    <div class="modal-title purple">// add cabinet</div>
+    <div class="mform">
+      <div class="field-group"><label>Cabinet Name *</label><input type="text" id="newCabinetName" placeholder="e.g. CAB-4"></div>
+      <div class="field-group"><label>Description</label><input type="text" id="newCabinetDesc" placeholder="Optional description"></div>
+      <div class="field-group">
+        <label>Cabinet Photo</label>
+        <div class="photo-zone" id="addCabDropZone" ondragover="dzOver(event,'addCabDropZone')" ondragleave="dzLeave('addCabDropZone')" ondrop="dzDrop(event,'newCabPhotoPreview','newCabPhotoData')">
+          <input type="file" accept="image/*" onchange="handleFile(this,'newCabPhotoPreview','newCabPhotoData')">
+          <div id="newCabPhotoPreview" class="photo-zone-inner">
+            <div class="photo-zone-icon">📷</div><div class="photo-zone-label">Click or drag</div>
+          </div>
+        </div>
+        <input type="hidden" id="newCabPhotoData">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('addCabinetModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="addCabinet()">Add Cabinet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT CABINET MODAL -->
+<div class="modal-bg" id="editCabinetModal">
+  <div class="modal modal-purple">
+    <div class="modal-title purple">// edit cabinet</div>
+    <div class="mform">
+      <input type="hidden" id="editCabId">
+      <div class="field-group"><label>Cabinet Name *</label><input type="text" id="editCabName"></div>
+      <div class="field-group"><label>Description</label><input type="text" id="editCabDesc"></div>
+      <div class="field-group">
+        <label>Cabinet Photo</label>
+        <div class="photo-zone" id="editCabDropZone" ondragover="dzOver(event,'editCabDropZone')" ondragleave="dzLeave('editCabDropZone')" ondrop="dzDrop(event,'editCabPhotoPreview','editCabPhotoData')">
+          <input type="file" accept="image/*" onchange="handleFile(this,'editCabPhotoPreview','editCabPhotoData')">
+          <div id="editCabPhotoPreview" class="photo-zone-inner">
+            <div class="photo-zone-icon">📷</div><div class="photo-zone-label">Click or drag</div>
+          </div>
+        </div>
+        <input type="hidden" id="editCabPhotoData">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="editCabRemovePhotoBtn" style="display:none;margin-right:auto" onclick="clearPreview('editCabPhotoPreview','editCabPhotoData',true);document.getElementById('editCabRemovePhotoBtn').style.display='none'">Remove Photo</button>
+        <button class="btn btn-ghost" onclick="closeModal('editCabinetModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEditCabinet()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD STANDALONE MODAL -->
+<div class="modal-bg" id="addStandaloneModal">
+  <div class="modal modal-purple">
+    <div class="modal-title purple">// add standalone shelf</div>
+    <div class="mform">
+      <div class="field-group"><label>Shelf Name *</label><input type="text" id="newSSName" placeholder="e.g. SHELF-01"></div>
+      <div class="field-group"><label>Description</label><input type="text" id="newSSDesc" placeholder="Optional description"></div>
+      <div class="field-group">
+        <label>Shelf Photo</label>
+        <div class="photo-zone" id="addSSDropZone" ondragover="dzOver(event,'addSSDropZone')" ondragleave="dzLeave('addSSDropZone')" ondrop="dzDrop(event,'newSSPhotoPreview','newSSPhotoData')">
+          <input type="file" accept="image/*" onchange="handleFile(this,'newSSPhotoPreview','newSSPhotoData')">
+          <div id="newSSPhotoPreview" class="photo-zone-inner">
+            <div class="photo-zone-icon">📷</div><div class="photo-zone-label">Click or drag</div>
+          </div>
+        </div>
+        <input type="hidden" id="newSSPhotoData">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('addStandaloneModal')">Cancel</button>
+        <button class="btn btn-purple" onclick="addStandalone()">Add Shelf</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT STANDALONE MODAL -->
+<div class="modal-bg" id="editStandaloneModal">
+  <div class="modal modal-purple">
+    <div class="modal-title purple">// edit standalone shelf</div>
+    <div class="mform">
+      <input type="hidden" id="editSSId">
+      <div class="field-group"><label>Shelf Name *</label><input type="text" id="editSSName"></div>
+      <div class="field-group"><label>Description</label><input type="text" id="editSSDesc"></div>
+      <div class="field-group">
+        <label>Shelf Photo</label>
+        <div class="photo-zone" id="editSSDropZone" ondragover="dzOver(event,'editSSDropZone')" ondragleave="dzLeave('editSSDropZone')" ondrop="dzDrop(event,'editSSPhotoPreview','editSSPhotoData')">
+          <input type="file" accept="image/*" onchange="handleFile(this,'editSSPhotoPreview','editSSPhotoData')">
+          <div id="editSSPhotoPreview" class="photo-zone-inner">
+            <div class="photo-zone-icon">📷</div><div class="photo-zone-label">Click or drag</div>
+          </div>
+        </div>
+        <input type="hidden" id="editSSPhotoData">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="editSSRemovePhotoBtn" style="display:none;margin-right:auto" onclick="clearPreview('editSSPhotoPreview','editSSPhotoData',true);document.getElementById('editSSRemovePhotoBtn').style.display='none'">Remove Photo</button>
+        <button class="btn btn-ghost" onclick="closeModal('editStandaloneModal')">Cancel</button>
+        <button class="btn btn-purple" onclick="saveEditStandalone()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lb-close" onclick="closeLightbox()">✕</button>
+  <img id="lbImg" src="" alt="">
+  <div class="lb-label" id="lbLabel"></div>
+</div>
+
+<input type="file" accept="image/*" id="inlineThumbInput" style="display:none" onchange="handleInlineThumb(this)">
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────
+let parts      = JSON.parse(localStorage.getItem('st2_parts')      || '[]');
+let cabinets   = JSON.parse(localStorage.getItem('st2_cabinets')   || '[]');
+let standalone = JSON.parse(localStorage.getItem('st2_standalone') || '[]');
+let photos     = JSON.parse(localStorage.getItem('st2_photos')     || '{}');
+let nextId     = parseInt(localStorage.getItem('st2_nextId')       || '1');
+let sortKey='partNum', sortDir=1, searchTerm='', locTypeFilter='', locFilter='';
+let inlineTarget=null;
+
+function save(){
+  localStorage.setItem('st2_parts',      JSON.stringify(parts));
+  localStorage.setItem('st2_cabinets',   JSON.stringify(cabinets));
+  localStorage.setItem('st2_standalone', JSON.stringify(standalone));
+  localStorage.setItem('st2_photos',     JSON.stringify(photos));
+  localStorage.setItem('st2_nextId',     String(nextId));
+}
+
+// ── SEED ──────────────────────────────────────────────────────────────────
+if(!parts.length && !cabinets.length && !standalone.length){
+  cabinets=[
+    {id:'cab1',name:'CAB-1',desc:'Fasteners & Bearings',shelves:['A-01','A-03','B-02','B-05']},
+    {id:'cab2',name:'CAB-2',desc:'Electrical & Pneumatics',shelves:['C-01','C-04','D-02','E-01','E-03']},
+    {id:'cab3',name:'CAB-3',desc:'Hardware & Switches',shelves:['F-01','G-02','H-01']},
+  ];
+  standalone=[
+    {id:'ss1', name:'SHELF-01',desc:'Bulk fasteners overflow'},
+    {id:'ss2', name:'SHELF-02',desc:'Large bearings'},
+    {id:'ss3', name:'SHELF-03',desc:'Sheet metal stock'},
+    {id:'ss4', name:'SHELF-04',desc:'Tools & gauges'},
+    {id:'ss5', name:'SHELF-05',desc:'O-rings & seals'},
+    {id:'ss6', name:'SHELF-06',desc:'Cable & wire stock'},
+    {id:'ss7', name:'SHELF-07',desc:'Pneumatic fittings'},
+    {id:'ss8', name:'SHELF-08',desc:'Relay modules'},
+    {id:'ss9', name:'SHELF-09',desc:'Sensor spares'},
+    {id:'ss10',name:'SHELF-10',desc:'Hydraulic parts'},
+    {id:'ss11',name:'SHELF-11',desc:'Motor components'},
+    {id:'ss12',name:'SHELF-12',desc:'Drive belts & pulleys'},
+    {id:'ss13',name:'SHELF-13',desc:'Valves & actuators'},
+    {id:'ss14',name:'SHELF-14',desc:'PCB & electronics'},
+    {id:'ss15',name:'SHELF-15',desc:'Lubricants & consumables'},
+  ];
+  const seeds=[
+    {partNum:'PN-00101',locType:'cabinet',cabinet:'CAB-1',shelf:'A-01',qty:24,desc:'M6 Hex Bolt Stainless 30mm'},
+    {partNum:'PN-00102',locType:'cabinet',cabinet:'CAB-1',shelf:'A-01',qty:50,desc:'M6 Flat Washer Zinc'},
+    {partNum:'PN-00203',locType:'cabinet',cabinet:'CAB-1',shelf:'A-03',qty:8, desc:'Bearing 6205-2RS Deep Groove'},
+    {partNum:'PN-00310',locType:'cabinet',cabinet:'CAB-1',shelf:'B-02',qty:3, desc:'Hydraulic Seal Kit 40mm'},
+    {partNum:'PN-00411',locType:'cabinet',cabinet:'CAB-1',shelf:'B-05',qty:0, desc:'Relay 24VDC SPDT 10A'},
+    {partNum:'PN-00512',locType:'cabinet',cabinet:'CAB-2',shelf:'C-01',qty:15,desc:'Cable Gland M20 Nylon'},
+    {partNum:'PN-00601',locType:'cabinet',cabinet:'CAB-2',shelf:'C-04',qty:2, desc:'Proximity Sensor NPN NO'},
+    {partNum:'PN-00745',locType:'cabinet',cabinet:'CAB-2',shelf:'D-02',qty:12,desc:'O-Ring 50x3 NBR 70'},
+    {partNum:'PN-00821',locType:'cabinet',cabinet:'CAB-2',shelf:'E-01',qty:7, desc:'Pneumatic Fitting 6mm Push-In'},
+    {partNum:'PN-00934',locType:'cabinet',cabinet:'CAB-2',shelf:'E-03',qty:0, desc:'Fuse 10A 250V Ceramic'},
+    {partNum:'PN-01045',locType:'cabinet',cabinet:'CAB-3',shelf:'F-01',qty:18,desc:'Spring Washer M8 Zinc'},
+    {partNum:'PN-01102',locType:'cabinet',cabinet:'CAB-3',shelf:'G-02',qty:4, desc:'Linear Guide Rail 300mm'},
+    {partNum:'PN-01233',locType:'cabinet',cabinet:'CAB-3',shelf:'H-01',qty:9, desc:'Toggle Switch SPST 15A'},
+    {partNum:'PN-01301',locType:'standalone',cabinet:'',shelf:'SHELF-01',qty:200,desc:'M4 Hex Bolt Bulk Pack'},
+    {partNum:'PN-01402',locType:'standalone',cabinet:'',shelf:'SHELF-03',qty:5,  desc:'Aluminium Plate 200x300mm'},
+    {partNum:'PN-01503',locType:'standalone',cabinet:'',shelf:'SHELF-05',qty:30, desc:'O-Ring Assortment NBR'},
+    {partNum:'PN-01601',locType:'standalone',cabinet:'',shelf:'SHELF-08',qty:6,  desc:'DIN Rail Relay 230V'},
+    {partNum:'PN-01702',locType:'standalone',cabinet:'',shelf:'SHELF-11',qty:2,  desc:'NEMA 23 Stepper Motor'},
+  ];
+  seeds.forEach(s=>parts.push({id:nextId++,...s}));
+  save();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function uid(){return 'x'+Math.random().toString(36).slice(2,9)}
+
+// ── PHOTO ─────────────────────────────────────────────────────────────────
+function handleFile(input,previewId,dataId){
+  const f=input.files[0];if(!f)return;
+  resizeImg(f,d=>{document.getElementById(dataId).value=d;showPreview(previewId,d,dataId);});
+}
+function dzOver(e,id){e.preventDefault();document.getElementById(id).classList.add('drag-over')}
+function dzLeave(id){document.getElementById(id).classList.remove('drag-over')}
+function dzDrop(e,previewId,dataId){
+  e.preventDefault();dzLeave(e.currentTarget.id);
+  const f=e.dataTransfer.files[0];
+  if(!f||!f.type.startsWith('image/'))return;
+  resizeImg(f,d=>{document.getElementById(dataId).value=d;showPreview(previewId,d,dataId);});
+}
+function showPreview(previewId,dataUrl,dataId){
+  const el=document.getElementById(previewId);
+  if(!dataUrl){el.innerHTML='<div class="photo-zone-icon">📷</div><div class="photo-zone-label">Click or drag</div>';return;}
+  el.innerHTML=`<div class="photo-preview-wrap"><img src="${dataUrl}" class="photo-preview"><button class="photo-remove-btn" onclick="clearPreview('${previewId}','${dataId}',false);event.stopPropagation()" title="Remove">✕</button></div>`;
+}
+function clearPreview(previewId,dataId,hideBtn){
+  document.getElementById(dataId).value='';
+  showPreview(previewId,'',dataId);
+}
+function resizeImg(file,cb){
+  const r=new FileReader();
+  r.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=800;let w=img.width,h=img.height;
+      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',.82));
+    };img.src=e.target.result;
+  };r.readAsDataURL(file);
+}
+function clickInlineThumb(partId){inlineTarget=partId;document.getElementById('inlineThumbInput').value='';document.getElementById('inlineThumbInput').click();}
+function handleInlineThumb(input){
+  const f=input.files[0];if(!f||!inlineTarget)return;
+  resizeImg(f,d=>{photos[inlineTarget]=d;save();render();toast('Photo saved ✓');});
+}
+function openLightbox(src,label){
+  if(!src)return;
+  document.getElementById('lbImg').src=src;
+  document.getElementById('lbLabel').textContent=label;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open')}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function getFiltered(){
+  return parts.filter(p=>{
+    const q=searchTerm.toLowerCase();
+    const ms=!q||p.partNum.toLowerCase().includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.shelf||'').toLowerCase().includes(q)||(p.cabinet||'').toLowerCase().includes(q);
+    const mt=!locTypeFilter||p.locType===locTypeFilter;
+    const ml=!locFilter||(p.locType==='cabinet'?p.shelf===locFilter:p.shelf===locFilter);
+    return ms&&mt&&ml;
+  }).sort((a,b)=>{
+    let av=a[sortKey]||'',bv=b[sortKey]||'';
+    if(sortKey==='qty')return(Number(av)-Number(bv))*sortDir;
+    return String(av).localeCompare(String(bv))*sortDir;
+  });
+}
+
+function render(){renderTable();renderStats();renderFilters();renderCabinetMap();renderStandaloneMap();updateSortHeaders();updateDatalists();}
+
+function renderTable(){
+  const fl=getFiltered();
+  document.getElementById('resultCount').textContent=fl.length+' record'+(fl.length!==1?'s':'');
+  const tb=document.getElementById('partsBody');
+  if(!fl.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="ei">⬡</div><p>No parts found</p></div></td></tr>`;return;}
+  tb.innerHTML=fl.map(p=>{
+    const qc=p.qty===0?'empty':p.qty<=5?'low':'';
+    const ph=photos[p.id];
+    const thumb=ph?`<img src="${ph}" class="part-thumb" onclick="openLightbox('${ph}','${esc(p.partNum)}')" alt="">`
+                  :`<div class="no-thumb" onclick="clickInlineThumb(${p.id})" title="Click to add photo">📷</div>`;
+    const typeBadge=p.locType==='standalone'
+      ?`<span class="loc-type-badge loc-type-shelf">📦 standalone</span>`
+      :`<span class="loc-type-badge loc-type-cab">🗄 cabinet</span>`;
+    const cabCell=p.locType==='cabinet'?`<span class="cabinet-badge">${esc(p.cabinet||'—')}</span>`:`<span style="color:var(--muted);font-size:11px">—</span>`;
+    const shelfClass=p.locType==='standalone'?'standalone':'';
+    return `<tr>
+      <td>${thumb}</td>
+      <td><span class="part-num">${esc(p.partNum)}</span></td>
+      <td>${typeBadge}</td>
+      <td>${cabCell}</td>
+      <td><span class="shelf-loc ${shelfClass}">▣ ${esc(p.shelf)}</span></td>
+      <td><span class="qty-badge ${qc}">${p.qty}</span></td>
+      <td><span class="desc-cell">${esc(p.desc)||'<span style="color:var(--muted);font-style:italic">—</span>'}</span></td>
+      <td><div class="actions-cell">
+        <button class="btn btn-edit" onclick="openEdit(${p.id})">Edit</button>
+        <button class="btn btn-danger" onclick="deletePart(${p.id})">Del</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderStats(){
+  document.getElementById('stat-parts').textContent=parts.length;
+  document.getElementById('stat-cabinets').textContent=cabinets.length;
+  document.getElementById('stat-standalone').textContent=standalone.length;
+  document.getElementById('stat-qty').textContent=parts.reduce((s,p)=>s+p.qty,0);
+}
+
+function renderFilters(){
+  const lt=document.getElementById('locTypeFilter').value;
+  const lf=document.getElementById('locFilter');const cur=lf.value;
+  let opts='<option value="">All</option>';
+  if(!lt||lt==='cabinet'){
+    const cabShelves=[...new Set(parts.filter(p=>p.locType==='cabinet').map(p=>p.shelf).filter(Boolean))].sort();
+    if(cabShelves.length) opts+=`<optgroup label="Cabinet Shelves">${cabShelves.map(s=>`<option value="${esc(s)}"${s===cur?' selected':''}>${esc(s)}</option>`).join('')}</optgroup>`;
+  }
+  if(!lt||lt==='standalone'){
+    const ssShelves=[...new Set(parts.filter(p=>p.locType==='standalone').map(p=>p.shelf).filter(Boolean))].sort();
+    if(ssShelves.length) opts+=`<optgroup label="Standalone Shelves">${ssShelves.map(s=>`<option value="${esc(s)}"${s===cur?' selected':''}>${esc(s)}</option>`).join('')}</optgroup>`;
+  }
+  lf.innerHTML=opts;
+}
+
+function updateDatalists(){
+  const cn=cabinets.map(c=>c.name);
+  ['cabinetList','editCabinetList'].forEach(id=>{const dl=document.getElementById(id);if(dl)dl.innerHTML=cn.map(n=>`<option value="${esc(n)}">`).join('');});
+  const sn=standalone.map(s=>s.name);
+  document.getElementById('shelfList').innerHTML='';
+  document.getElementById('editShelfList').innerHTML='';
+  // populated dynamically based on locType
+}
+function updateShelfDatalist(listId, locType){
+  const dl=document.getElementById(listId);if(!dl)return;
+  if(locType==='standalone'){
+    dl.innerHTML=standalone.map(s=>`<option value="${esc(s.name)}">`).join('');
+  } else {
+    const all=[...new Set(cabinets.flatMap(c=>c.shelves))];
+    dl.innerHTML=all.map(s=>`<option value="${esc(s)}">`).join('');
+  }
+}
+
+function renderCabinetMap(){
+  const cont=document.getElementById('cabinetMap');
+  if(!cabinets.length){cont.innerHTML='<div style="color:var(--muted);font-family:var(--mono);font-size:12px;padding:12px 0">No cabinets. Click "+ Cabinet" to add one.</div>';return;}
+  const lookup={};
+  parts.filter(p=>p.locType==='cabinet').forEach(p=>{const k=`${p.cabinet}||${p.shelf}`;if(!lookup[k])lookup[k]=[];lookup[k].push(p);});
+  cont.innerHTML=cabinets.map(cab=>{
+    const shelves=cab.shelves||[];
+    const total=shelves.reduce((s,sh)=>s+(lookup[`${cab.name}||${sh}`]||[]).length,0);
+    const cabPh=photos['cab_'+cab.id];
+    const cabThumb=cabPh
+      ?`<img src="${cabPh}" class="cabinet-photo-thumb" onclick="openLightbox('${cabPh}','${esc(cab.name)}')" alt="">`
+      :`<div class="cabinet-photo-placeholder" onclick="clickLocationPhoto('cab','${esc(cab.id)}')" title="Add photo">📷</div>`;
+    const shelfCards=shelves.map(sh=>{
+      const ps=lookup[`${cab.name}||${sh}`]||[];
+      const shPh=photos[`cabshelf_${cab.id}_${sh}`];
+      const shThumb=shPh
+        ?`<img src="${shPh}" class="shelf-cell-photo" onclick="openLightbox('${shPh}','${esc(sh)}')" alt="">`
+        :`<div class="shelf-cell-photo-placeholder" onclick="clickLocationPhoto('cabshelf','${esc(cab.id)}','${esc(sh)}')" title="Add shelf photo">📷</div>`;
+      const preview=ps.slice(0,3).map(p=>p.partNum).join('<br>')+(ps.length>3?`<br>+${ps.length-3} more`:'');
+      return `<div class="shelf-cell${ps.length?' occupied':''}">
+        <div class="shelf-cell-top">
+          <span class="shelf-id" onclick="jumpTo('cabinet','${esc(cab.name)}','${esc(sh)}')">${esc(sh)}</span>
+          <div class="shelf-btns">
+            <button class="shelf-btn" onclick="renameCabShelf('${esc(cab.id)}','${esc(sh)}')" title="Rename">✎</button>
+            <button class="shelf-btn del" onclick="deleteCabShelf('${esc(cab.id)}','${esc(sh)}')" title="Delete">✕</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">${shThumb}<div><div class="shelf-count">${ps.length} part${ps.length!==1?'s':''}</div></div></div>
+        ${ps.length?`<div class="shelf-preview" onclick="jumpTo('cabinet','${esc(cab.name)}','${esc(sh)}')">${preview}</div>`:''}
+      </div>`;
+    }).join('');
+    return `<div class="cabinet-block" id="cab-${esc(cab.id)}">
+      <div class="cabinet-header">
+        ${cabThumb}
+        <div class="cabinet-name-wrap">
+          <span class="cabinet-name" onclick="jumpTo('cabinet','${esc(cab.name)}','')">${esc(cab.name)}</span>
+          <div class="cabinet-sub">${esc(cab.desc||'')}</div>
+        </div>
+        <span class="cabinet-meta" style="margin-left:auto">${shelves.length} shelf${shelves.length!==1?'ves':''} · ${total} part${total!==1?'s':''}</span>
+        <div class="cabinet-actions">
+          <button class="btn btn-edit btn-sm" onclick="openEditCabinet('${esc(cab.id)}')">✎ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCabinet('${esc(cab.id)}')">✕</button>
+        </div>
+      </div>
+      <div class="cabinet-body">
+        <div class="shelf-grid">${shelfCards}<button class="add-shelf-btn" onclick="addCabShelf('${esc(cab.id)}')">+ Shelf</button></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderStandaloneMap(){
+  const cont=document.getElementById('standaloneMap');
+  const lookup={};
+  parts.filter(p=>p.locType==='standalone').forEach(p=>{if(!lookup[p.shelf])lookup[p.shelf]=[];lookup[p.shelf].push(p);});
+  const cards=standalone.map(ss=>{
+    const ps=lookup[ss.name]||[];
+    const ph=photos['ss_'+ss.id];
+    const thumb=ph
+      ?`<img src="${ph}" class="ss-photo" onclick="openLightbox('${ph}','${esc(ss.name)}')" alt="">`
+      :`<div class="ss-photo-placeholder" onclick="clickLocationPhoto('ss','${esc(ss.id)}')" title="Add photo">📦</div>`;
+    const preview=ps.slice(0,4).map(p=>p.partNum).join(' · ')+(ps.length>4?` +${ps.length-4}`:'');
+    return `<div class="standalone-shelf${ps.length?' occupied':''}">
+      <div class="ss-top">
+        ${thumb}
+        <div class="ss-info">
+          <div class="ss-name" onclick="jumpTo('standalone','',ss.name)">${esc(ss.name)}</div>
+          <div class="ss-desc">${esc(ss.desc||'')}</div>
+        </div>
+      </div>
+      <div class="ss-count">${ps.length} part${ps.length!==1?'s':''}</div>
+      ${ps.length?`<div class="ss-preview" onclick="jumpTo('standalone','','${esc(ss.name)}')">${preview}</div>`:'<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">empty</div>'}
+      <div class="ss-actions">
+        <button class="btn btn-edit btn-sm" onclick="openEditStandalone('${esc(ss.id)}')">✎ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteStandalone('${esc(ss.id)}')">✕ Delete</button>
+      </div>
+    </div>`;
+  });
+  cards.push(`<button class="add-standalone-btn" onclick="openAddStandalone()">+ Add Standalone Shelf</button>`);
+  cont.innerHTML=cards.join('');
+}
+
+function updateSortHeaders(){
+  ['partNum','locType','cabinet','shelf','qty','desc'].forEach(k=>{
+    const el=document.getElementById('th-'+k);if(!el)return;
+    el.className=k===sortKey?'sorted':'';
+    el.querySelector('.si').textContent=k===sortKey?(sortDir===1?'↑':'↓'):'↕';
+  });
+}
+
+// ── LOCATION PHOTO (click on map thumbnails) ──────────────────────────────
+let locPhotoTarget=null;
+const locPhotoInput=document.createElement('input');
+locPhotoInput.type='file';locPhotoInput.accept='image/*';locPhotoInput.style.display='none';
+locPhotoInput.onchange=function(){
+  const f=locPhotoInput.files[0];if(!f||!locPhotoTarget)return;
+  resizeImg(f,d=>{photos[locPhotoTarget]=d;save();render();toast('Photo saved ✓');});
+};
+document.body.appendChild(locPhotoInput);
+function clickLocationPhoto(type,id,shelf){
+  if(type==='cab')      locPhotoTarget='cab_'+id;
+  else if(type==='ss')  locPhotoTarget='ss_'+id;
+  else                  locPhotoTarget='cabshelf_'+id+'_'+shelf;
+  locPhotoInput.value='';locPhotoInput.click();
+}
+
+// ── PARTS CRUD ────────────────────────────────────────────────────────────
+function updateAddLocFields(){
+  const lt=document.getElementById('newLocType').value;
+  document.getElementById('addCabinetField').style.display=lt==='cabinet'?'':'none';
+  document.getElementById('addShelfLabel').textContent=lt==='standalone'?'Standalone Shelf *':'Shelf *';
+  updateShelfDatalist('shelfList',lt);
+}
+function addPart(){
+  const partNum=document.getElementById('newPartNum').value.trim();
+  const locType=document.getElementById('newLocType').value;
+  const cabinet=locType==='cabinet'?document.getElementById('newCabinet').value.trim():'';
+  const shelf=document.getElementById('newShelf').value.trim();
+  const qty=parseInt(document.getElementById('newQty').value)||0;
+  const desc=document.getElementById('newDesc').value.trim();
+  const ph=document.getElementById('newPhotoData').value;
+  if(!partNum||!shelf){toast('Part number & shelf required',true);return;}
+  const id=nextId++;
+  parts.push({id,partNum,locType,cabinet,shelf,qty,desc});
+  if(ph)photos[id]=ph;
+  if(locType==='cabinet'&&cabinet){const cab=cabinets.find(c=>c.name===cabinet);if(cab&&!cab.shelves.includes(shelf))cab.shelves.push(shelf);}
+  save();
+  ['newPartNum','newCabinet','newShelf','newQty','newDesc','newPhotoData'].forEach(i=>document.getElementById(i).value='');
+  showPreview('newPhotoPreview','','newPhotoData');
+  toggleAddPanel();render();toast('Part added ✓');
+}
+function deletePart(id){
+  if(!confirm('Delete this part?'))return;
+  parts=parts.filter(p=>p.id!==id);delete photos[id];save();render();toast('Part deleted');
+}
+function openEdit(id){
+  const p=parts.find(x=>x.id===id);if(!p)return;
+  document.getElementById('editId').value=p.id;
+  document.getElementById('editPartNum').value=p.partNum;
+  document.getElementById('editLocType').value=p.locType||'cabinet';
+  document.getElementById('editCabinet').value=p.cabinet||'';
+  document.getElementById('editShelf').value=p.shelf;
+  document.getElementById('editQty').value=p.qty;
+  document.getElementById('editDesc').value=p.desc||'';
+  updateEditLocFields();
+  const ph=photos[p.id]||'';
+  document.getElementById('editPhotoData').value=ph;
+  showPreview('editPhotoPreview',ph,'editPhotoData');
+  document.getElementById('editRemovePhotoBtn').style.display=ph?'inline-flex':'none';
+  document.getElementById('editModal').classList.add('open');
+}
+function updateEditLocFields(){
+  const lt=document.getElementById('editLocType').value;
+  document.getElementById('editCabinetField').style.display=lt==='cabinet'?'':'none';
+  document.getElementById('editShelfLabel').textContent=lt==='standalone'?'Standalone Shelf':'Shelf';
+  updateShelfDatalist('editShelfList',lt);
+}
+function saveEdit(){
+  const id=parseInt(document.getElementById('editId').value);
+  const p=parts.find(x=>x.id===id);if(!p)return;
+  p.partNum=document.getElementById('editPartNum').value.trim();
+  p.locType=document.getElementById('editLocType').value;
+  p.cabinet=p.locType==='cabinet'?document.getElementById('editCabinet').value.trim():'';
+  p.shelf=document.getElementById('editShelf').value.trim();
+  p.qty=parseInt(document.getElementById('editQty').value)||0;
+  p.desc=document.getElementById('editDesc').value.trim();
+  const ph=document.getElementById('editPhotoData').value;
+  if(ph)photos[id]=ph;else delete photos[id];
+  if(!p.partNum||!p.shelf){toast('Part number & shelf required',true);return;}
+  save();closeModal('editModal');render();toast('Changes saved ✓');
+}
+
+// ── CABINET CRUD ──────────────────────────────────────────────────────────
+function openAddCabinet(){
+  ['newCabinetName','newCabinetDesc','newCabPhotoData'].forEach(i=>document.getElementById(i).value='');
+  showPreview('newCabPhotoPreview','','newCabPhotoData');
+  document.getElementById('addCabinetModal').classList.add('open');
+  setTimeout(()=>document.getElementById('newCabinetName').focus(),50);
+}
+function addCabinet(){
+  const name=document.getElementById('newCabinetName').value.trim();
+  if(!name){toast('Name required',true);return;}
+  if(cabinets.find(c=>c.name===name)){toast('Already exists',true);return;}
+  const id=uid();
+  const ph=document.getElementById('newCabPhotoData').value;
+  if(ph)photos['cab_'+id]=ph;
+  cabinets.push({id,name,desc:document.getElementById('newCabinetDesc').value.trim(),shelves:[]});
+  save();closeModal('addCabinetModal');render();toast('Cabinet added ✓');
+}
+function openEditCabinet(cabId){
+  const cab=cabinets.find(c=>c.id===cabId);if(!cab)return;
+  document.getElementById('editCabId').value=cab.id;
+  document.getElementById('editCabName').value=cab.name;
+  document.getElementById('editCabDesc').value=cab.desc||'';
+  const ph=photos['cab_'+cab.id]||'';
+  document.getElementById('editCabPhotoData').value=ph;
+  showPreview('editCabPhotoPreview',ph,'editCabPhotoData');
+  document.getElementById('editCabRemovePhotoBtn').style.display=ph?'inline-flex':'none';
+  document.getElementById('editCabinetModal').classList.add('open');
+}
+function saveEditCabinet(){
+  const id=document.getElementById('editCabId').value;
+  const cab=cabinets.find(c=>c.id===id);if(!cab)return;
+  const newName=document.getElementById('editCabName').value.trim();
+  if(!newName){toast('Name required',true);return;}
+  if(cabinets.find(c=>c.name===newName&&c.id!==id)){toast('Name already in use',true);return;}
+  parts.forEach(p=>{if(p.cabinet===cab.name)p.cabinet=newName;});
+  cab.name=newName;cab.desc=document.getElementById('editCabDesc').value.trim();
+  const ph=document.getElementById('editCabPhotoData').value;
+  if(ph)photos['cab_'+id]=ph;else delete photos['cab_'+id];
+  save();closeModal('editCabinetModal');render();toast('Cabinet updated ✓');
+}
+function deleteCabinet(cabId){
+  const cab=cabinets.find(c=>c.id===cabId);if(!cab)return;
+  const pc=parts.filter(p=>p.cabinet===cab.name).length;
+  if(!confirm(`Delete "${cab.name}"?${pc?`\n${pc} part(s) will be unlinked.`:''}`))return;
+  parts.forEach(p=>{if(p.cabinet===cab.name)p.cabinet='';});
+  delete photos['cab_'+cabId];
+  cabinets=cabinets.filter(c=>c.id!==cabId);
+  save();render();toast('Cabinet deleted');
+}
+function addCabShelf(cabId){
+  const cab=cabinets.find(c=>c.id===cabId);if(!cab)return;
+  const n=prompt('New shelf name (e.g. A-04):');if(!n||!n.trim())return;
+  const sh=n.trim().toUpperCase();
+  if(cab.shelves.includes(sh)){toast('Already exists',true);return;}
+  cab.shelves.push(sh);save();render();toast('Shelf added ✓');
+}
+function renameCabShelf(cabId,old){
+  const cab=cabinets.find(c=>c.id===cabId);if(!cab)return;
+  const n=prompt('Rename shelf:',old);if(!n||n.trim()===old)return;
+  const sh=n.trim().toUpperCase();
+  if(cab.shelves.includes(sh)){toast('Already exists',true);return;}
+  cab.shelves=cab.shelves.map(s=>s===old?sh:s);
+  parts.forEach(p=>{if(p.cabinet===cab.name&&p.shelf===old)p.shelf=sh;});
+  const oldPh=photos[`cabshelf_${cabId}_${old}`];
+  if(oldPh){photos[`cabshelf_${cabId}_${sh}`]=oldPh;delete photos[`cabshelf_${cabId}_${old}`];}
+  save();render();toast('Shelf renamed ✓');
+}
+function deleteCabShelf(cabId,shelf){
+  const cab=cabinets.find(c=>c.id===cabId);if(!cab)return;
+  const pc=parts.filter(p=>p.cabinet===cab.name&&p.shelf===shelf).length;
+  if(!confirm(`Delete shelf "${shelf}"?${pc?`\n${pc} part(s) will be unlinked.`:''}`))return;
+  parts.forEach(p=>{if(p.cabinet===cab.name&&p.shelf===shelf)p.shelf='';});
+  delete photos[`cabshelf_${cabId}_${shelf}`];
+  cab.shelves=cab.shelves.filter(s=>s!==shelf);
+  save();render();toast('Shelf deleted');
+}
+
+// ── STANDALONE CRUD ───────────────────────────────────────────────────────
+function openAddStandalone(){
+  ['newSSName','newSSDesc','newSSPhotoData'].forEach(i=>document.getElementById(i).value='');
+  showPreview('newSSPhotoPreview','','newSSPhotoData');
+  document.getElementById('addStandaloneModal').classList.add('open');
+  setTimeout(()=>document.getElementById('newSSName').focus(),50);
+}
+function addStandalone(){
+  const name=document.getElementById('newSSName').value.trim();
+  if(!name){toast('Name required',true);return;}
+  if(standalone.find(s=>s.name===name)){toast('Already exists',true);return;}
+  const id=uid();
+  const ph=document.getElementById('newSSPhotoData').value;
+  if(ph)photos['ss_'+id]=ph;
+  standalone.push({id,name,desc:document.getElementById('newSSDesc').value.trim()});
+  save();closeModal('addStandaloneModal');render();toast('Standalone shelf added ✓');
+}
+function openEditStandalone(ssId){
+  const ss=standalone.find(s=>s.id===ssId);if(!ss)return;
+  document.getElementById('editSSId').value=ss.id;
+  document.getElementById('editSSName').value=ss.name;
+  document.getElementById('editSSDesc').value=ss.desc||'';
+  const ph=photos['ss_'+ss.id]||'';
+  document.getElementById('editSSPhotoData').value=ph;
+  showPreview('editSSPhotoPreview',ph,'editSSPhotoData');
+  document.getElementById('editSSRemovePhotoBtn').style.display=ph?'inline-flex':'none';
+  document.getElementById('editStandaloneModal').classList.add('open');
+}
+function saveEditStandalone(){
+  const id=document.getElementById('editSSId').value;
+  const ss=standalone.find(s=>s.id===id);if(!ss)return;
+  const newName=document.getElementById('editSSName').value.trim();
+  if(!newName){toast('Name required',true);return;}
+  if(standalone.find(s=>s.name===newName&&s.id!==id)){toast('Name already in use',true);return;}
+  parts.forEach(p=>{if(p.locType==='standalone'&&p.shelf===ss.name)p.shelf=newName;});
+  ss.name=newName;ss.desc=document.getElementById('editSSDesc').value.trim();
+  const ph=document.getElementById('editSSPhotoData').value;
+  if(ph)photos['ss_'+id]=ph;else delete photos['ss_'+id];
+  save();closeModal('editStandaloneModal');render();toast('Shelf updated ✓');
+}
+function deleteStandalone(ssId){
+  const ss=standalone.find(s=>s.id===ssId);if(!ss)return;
+  const pc=parts.filter(p=>p.locType==='standalone'&&p.shelf===ss.name).length;
+  if(!confirm(`Delete "${ss.name}"?${pc?`\n${pc} part(s) will be unlinked.`:''}`))return;
+  parts.forEach(p=>{if(p.locType==='standalone'&&p.shelf===ss.name)p.shelf='';});
+  delete photos['ss_'+ssId];
+  standalone=standalone.filter(s=>s.id!==ssId);
+  save();render();toast('Shelf deleted');
+}
+
+// ── FILTERS & NAV ─────────────────────────────────────────────────────────
+function filterParts(){
+  searchTerm=document.getElementById('searchInput').value;
+  locTypeFilter=document.getElementById('locTypeFilter').value;
+  locFilter=document.getElementById('locFilter').value;
+  render();
+}
+function jumpTo(type,cabinet,shelf){
+  locTypeFilter=type;locFilter=shelf;
+  document.getElementById('locTypeFilter').value=type;
+  document.getElementById('locFilter').value='';
+  render();
+  document.getElementById('locFilter').value=shelf;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();}
+function toggleAddPanel(){
+  const p=document.getElementById('addPanel');p.classList.toggle('open');
+  if(p.classList.contains('open')){updateAddLocFields();document.getElementById('newPartNum').focus();}
+}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function resetToDefaults(){
+  if(!confirm('Reset all data to defaults?'))return;
+  ['st2_parts','st2_cabinets','st2_standalone','st2_photos','st2_nextId'].forEach(k=>localStorage.removeItem(k));
+  location.reload();
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────
+let _tt;
+function toast(msg,err){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.style.borderColor=err?'var(--danger)':'var(--accent)';el.style.color=err?'var(--danger)':'var(--accent)';
+  el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+// ── KEYBOARD ──────────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    ['editModal','addCabinetModal','editCabinetModal','addStandaloneModal','editStandaloneModal'].forEach(id=>closeModal(id));
+    closeLightbox();document.getElementById('addPanel').classList.remove('open');
+  }
+});
+['editModal','addCabinetModal','editCabinetModal','addStandaloneModal','editStandaloneModal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target===document.getElementById(id))closeModal(id);});
+});
+document.getElementById('newCabinetName').addEventListener('keydown',e=>{if(e.key==='Enter')addCabinet();});
+document.getElementById('newSSName').addEventListener('keydown',e=>{if(e.key==='Enter')addStandalone();});
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
