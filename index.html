@@ -505,7 +505,7 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-  import { getFirestore, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+  import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDraEo9SORrT5LCn14VBFT4t5IEHFw83ig",
@@ -887,19 +887,35 @@ function updateEditLocFields(){
   updateShelfDatalist('editShelfList',lt);
 }
 function saveEdit(){
-  const id=parseInt(document.getElementById('editId').value);
-  const p=parts.find(x=>x.id===id);if(!p)return;
-  p.partNum=document.getElementById('editPartNum').value.trim();
-  p.locType=document.getElementById('editLocType').value;
-  p.cabinet=p.locType==='cabinet'?document.getElementById('editCabinet').value.trim():'';
-  p.shelf=document.getElementById('editShelf').value.trim();
-  p.qty=parseInt(document.getElementById('editQty').value)||0;
-  p.desc=document.getElementById('editDesc').value.trim();
-  const ph=document.getElementById('editPhotoData').value;
-  if(ph)photos[id]=ph;else delete photos[id];
-  if(!p.partNum||!p.shelf){toast('Part number & shelf required',true);return;}
-  save();closeModal('editModal');render();toast('Changes saved ✓');
+ async function saveEdit(){
+  const id = document.getElementById('editId').value;
+
+  const updated = {
+    part: document.getElementById('editPartNum').value.trim(),
+    type: document.getElementById('editLocType').value,
+    cabinet: document.getElementById('editCabinet').value.trim(),
+    shelf: document.getElementById('editShelf').value.trim(),
+    qty: parseInt(document.getElementById('editQty').value) || 0,
+    description: document.getElementById('editDesc').value.trim()
+  };
+
+  if(!updated.part || !updated.shelf){
+    toast('Part number & shelf required', true);
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, "parts", id), updated);
+
+    closeModal('editModal');
+    toast('Updated ✓');
+
+  } catch (e) {
+    console.error("Edit failed:", e);
+    toast('Error updating', true);
+  }
 }
+
 
 // ── CABINET CRUD ──────────────────────────────────────────────────────────
 function openAddCabinet(){
