@@ -898,6 +898,7 @@ function updateEditLocFields(){
     qty: parseInt(document.getElementById('editQty').value) || 0,
     description: document.getElementById('editDesc').value.trim()
   };
+   console.log("EDIT DATA:", updated);
   if(!updated.part || !updated.shelf){
     toast('Part number & shelf required', true);
     return;
