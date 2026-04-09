@@ -503,9 +503,23 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 <input type="file" accept="image/*" id="inlineThumbInput" style="display:none" onchange="handleInlineThumb(this)">
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+  import { getFirestore, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDraEo9SORrT5LCn14VBFT4t5IEHFw83ig",
+    authDomain: "shelftracker-allseas.firebaseapp.com",
+    projectId: "shelftracker-allseas",
+    storageBucket: "shelftracker-allseas.firebasestorage.app",
+    messagingSenderId: "440801606441",
+    appId: "1:440801606441:web:94ea65b4cff95bbb30d538"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 // ── DATA ──────────────────────────────────────────────────────────────────
-let parts      = JSON.parse(localStorage.getItem('st2_parts')      || '[]');
+let parts = [];
 let cabinets   = JSON.parse(localStorage.getItem('st2_cabinets')   || '[]');
 let standalone = JSON.parse(localStorage.getItem('st2_standalone') || '[]');
 let photos     = JSON.parse(localStorage.getItem('st2_photos')     || '{}');
@@ -514,11 +528,7 @@ let sortKey='partNum', sortDir=1, searchTerm='', locTypeFilter='', locFilter='';
 let inlineTarget=null;
 
 function save(){
-  localStorage.setItem('st2_parts',      JSON.stringify(parts));
-  localStorage.setItem('st2_cabinets',   JSON.stringify(cabinets));
-  localStorage.setItem('st2_standalone', JSON.stringify(standalone));
-  localStorage.setItem('st2_photos',     JSON.stringify(photos));
-  localStorage.setItem('st2_nextId',     String(nextId));
+  // disabled — using Firebase now
 }
 
 // ── SEED ──────────────────────────────────────────────────────────────────
@@ -822,22 +832,33 @@ function updateAddLocFields(){
   updateShelfDatalist('shelfList',lt);
 }
 function addPart(){
-  const partNum=document.getElementById('newPartNum').value.trim();
-  const locType=document.getElementById('newLocType').value;
-  const cabinet=locType==='cabinet'?document.getElementById('newCabinet').value.trim():'';
-  const shelf=document.getElementById('newShelf').value.trim();
-  const qty=parseInt(document.getElementById('newQty').value)||0;
-  const desc=document.getElementById('newDesc').value.trim();
-  const ph=document.getElementById('newPhotoData').value;
-  if(!partNum||!shelf){toast('Part number & shelf required',true);return;}
-  const id=nextId++;
-  parts.push({id,partNum,locType,cabinet,shelf,qty,desc});
-  if(ph)photos[id]=ph;
-  if(locType==='cabinet'&&cabinet){const cab=cabinets.find(c=>c.name===cabinet);if(cab&&!cab.shelves.includes(shelf))cab.shelves.push(shelf);}
-  save();
-  ['newPartNum','newCabinet','newShelf','newQty','newDesc','newPhotoData'].forEach(i=>document.getElementById(i).value='');
-  showPreview('newPhotoPreview','','newPhotoData');
-  toggleAddPanel();render();toast('Part added ✓');
+  const partNum = document.getElementById('newPartNum').value.trim();
+  const locType = document.getElementById('newLocType').value;
+  const cabinet = locType === 'cabinet' ? document.getElementById('newCabinet').value.trim() : '';
+  const shelf = document.getElementById('newShelf').value.trim();
+  const qty = parseInt(document.getElementById('newQty').value) || 0;
+  const desc = document.getElementById('newDesc').value.trim();
+
+  if(!partNum || !shelf){
+    toast('Part number & shelf required', true);
+    return;
+  }
+
+  addDoc(collection(db, "parts"), {
+    part: partNum,
+    cabinet: cabinet,
+    shelf: shelf,
+    qty: qty,
+    description: desc,
+    type: locType
+  });
+
+  ['newPartNum','newCabinet','newShelf','newQty','newDesc'].forEach(i => {
+    document.getElementById(i).value = '';
+  });
+
+  toggleAddPanel();
+  toast('Part added ✓');
 }
 function deletePart(id){
   if(!confirm('Delete this part?'))return;
@@ -1054,9 +1075,27 @@ document.addEventListener('keydown',e=>{
 });
 document.getElementById('newCabinetName').addEventListener('keydown',e=>{if(e.key==='Enter')addCabinet();});
 document.getElementById('newSSName').addEventListener('keydown',e=>{if(e.key==='Enter')addStandalone();});
+onSnapshot(collection(db, "parts"), (snapshot) => {
+  parts = [];
 
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+
+    parts.push({
+      id: doc.id,
+      partNum: data.part,
+      locType: data.type || "cabinet",
+      cabinet: data.cabinet,
+      shelf: data.shelf,
+      qty: data.qty,
+      desc: data.description
+    });
+  });
+
+  render();
+});
 // ── INIT ──────────────────────────────────────────────────────────────────
-render();
+
 </script>
 </body>
 </html>
