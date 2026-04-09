@@ -1095,7 +1095,12 @@ onSnapshot(collection(db, "parts"), (snapshot) => {
   render();
 });
 // ── INIT ──────────────────────────────────────────────────────────────────
-
+window.toggleAddPanel = toggleAddPanel;
+window.openEdit = openEdit;
+window.openEditStandalone = openEditStandalone;
+window.addPart = addPart;
+window.saveEdit = saveEdit;
+window.deletePart = deletePart;
 </script>
 </body>
 </html>
