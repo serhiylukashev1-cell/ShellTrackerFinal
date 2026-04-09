@@ -741,7 +741,7 @@ function renderCabinetMap(){
         <div class="shelf-cell-top">
           <span class="shelf-id" onclick="jumpTo('cabinet','${esc(cab.name)}','${esc(sh)}')">${esc(sh)}</span>
           <div class="shelf-btns">
-            <button class="shelf-btn" onclick="renameCabShelf('${esc(cab.id)}','${esc(sh)}')" title="Rename">✎</button>
+            <button class="shelf-btn" onclick="saveEdit('${esc(cab.id)}','${esc(sh)}')" title="Rename">✎</button>
             <button class="shelf-btn del" onclick="deleteCabShelf('${esc(cab.id)}','${esc(sh)}')" title="Delete">✕</button>
           </div>
         </div>
