@@ -886,7 +886,7 @@ function updateEditLocFields(){
   document.getElementById('editShelfLabel').textContent=lt==='standalone'?'Standalone Shelf':'Shelf';
   updateShelfDatalist('editShelfList',lt);
 }
-function saveEdit(){
+
  async function saveEdit(){
   const id = document.getElementById('editId').value;
 
@@ -898,15 +898,12 @@ function saveEdit(){
     qty: parseInt(document.getElementById('editQty').value) || 0,
     description: document.getElementById('editDesc').value.trim()
   };
-
   if(!updated.part || !updated.shelf){
     toast('Part number & shelf required', true);
     return;
   }
-
   try {
     await updateDoc(doc(db, "parts", id), updated);
-
     closeModal('editModal');
     toast('Updated ✓');
 
@@ -915,7 +912,6 @@ function saveEdit(){
     toast('Error updating', true);
   }
 }
-
 
 // ── CABINET CRUD ──────────────────────────────────────────────────────────
 function openAddCabinet(){
